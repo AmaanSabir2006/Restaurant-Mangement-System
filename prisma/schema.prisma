@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Employee {
+  id        String   @id @default(cuid())
+  name      String
+  role      String   // CASHIER | KITCHEN | INVENTORY_MGR | ADMIN
+  pin       String   @default("1234")
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+}
+
+model MenuItem {
+  id          String       @id @default(cuid())
+  sku         String       @unique
+  name        String
+  category    String       // Burgers | Sides | Beverages | Combos | Deals
+  price       Float
+  description String?
+  image       String?
+  isAvailable Boolean      @default(true)
+  prepTimeMin Int          @default(5)
+  calories    Int?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  recipeItems RecipeItem[]
+  orderItems  OrderItem[]
+  modifiers   Modifier[]
+}
+
+model Ingredient {
+  id               String             @id @default(cuid())
+  name             String             @unique
+  unit             String             // g, ml, pcs, slices, sheets
+  currentStock     Float
+  reorderThreshold Float
+  costPerUnit      Float              @default(0.0)
+  supplier         String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  recipeItems      RecipeItem[]
+  stockTransactions StockTransaction[]
+  modifiers        Modifier[]
+  purchaseOrderItems PurchaseOrderItem[]
+}
+
+model RecipeItem {
+  id               String     @id @default(cuid())
+  menuItemId       String
+  ingredientId     String
+  quantityRequired Float
+
+  menuItem   MenuItem   @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+
+  @@unique([menuItemId, ingredientId])
+}
+
+model Modifier {
+  id           String      @id @default(cuid())
+  name         String
+  price        Float       @default(0.0)
+  menuItemId   String?
+  ingredientId String?
+  extraQty     Float       @default(1.0)
+  createdAt    DateTime    @default(now())
+
+  menuItem   MenuItem?   @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  ingredient Ingredient? @relation(fields: [ingredientId], references: [id], onDelete: SetNull)
+  orderItemModifiers OrderItemModifier[]
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  orderNumber   Int         @unique
+  orderType     String      // DINE_IN | TAKEAWAY | DRIVE_THRU | DELIVERY
+  status        String      @default("PENDING") // PENDING | PREPARING | READY | COMPLETED | CANCELLED
+  subtotal      Float
+  tax           Float       @default(0.0)
+  discount      Float       @default(0.0)
+  serviceCharge Float       @default(0.0)
+  totalAmount   Float
+  paymentMethod String      @default("CASH") // CASH | CARD | QR_MOBILE
+  paymentStatus String      @default("PAID") // PAID | PENDING
+  customerName  String?
+  notes         String?
+  employeeId    String?
+  
+  prepStartTime DateTime?
+  readyTime     DateTime?
+  completedTime DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  employee Employee?    @relation(fields: [employeeId], references: [id])
+  items    OrderItem[]
+}
+
+model OrderItem {
+  id         String   @id @default(cuid())
+  orderId    String
+  menuItemId String
+  quantity   Int
+  unitPrice  Float
+  notes      String?
+
+  order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem  MenuItem  @relation(fields: [menuItemId], references: [id], onDelete: Restrict)
+  modifiers OrderItemModifier[]
+}
+
+model OrderItemModifier {
+  id          String   @id @default(cuid())
+  orderItemId String
+  modifierId  String?
+  name        String
+  price       Float
+
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  modifier  Modifier? @relation(fields: [modifierId], references: [id], onDelete: SetNull)
+}
+
+model StockTransaction {
+  id           String     @id @default(cuid())
+  ingredientId String
+  type         String     // USAGE | RESTOCK | WASTE | ADJUSTMENT
+  quantity     Float      // positive for restock/gain, negative for usage/waste/loss
+  reason       String?
+  referenceId  String?    // e.g. orderId or purchaseOrderId
+  createdAt    DateTime   @default(now())
+
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+}
+
+model PurchaseOrder {
+  id          String              @id @default(cuid())
+  poNumber    String              @unique
+  supplier    String
+  totalCost   Float               @default(0.0)
+  status      String              @default("PENDING") // PENDING | RECEIVED | CANCELLED
+  notes       String?
+  createdAt   DateTime            @default(now())
+  receivedAt  DateTime?
+
+  items       PurchaseOrderItem[]
+}
+
+model PurchaseOrderItem {
+  id              String        @id @default(cuid())
+  purchaseOrderId String
+  ingredientId    String
+  quantity        Float
+  unitCost        Float
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  ingredient    Ingredient    @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+}
