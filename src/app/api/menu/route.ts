@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
       where.category = category;
     }
 
-    const items = await prisma.menuItem.findMany({
+    let items = await prisma.menuItem.findMany({
       where,
       include: {
         modifiers: true,
@@ -26,6 +26,47 @@ export async function GET(req: NextRequest) {
       },
       orderBy: [{ category: "asc" }, { price: "asc" }],
     });
+
+    // Auto-seed failsafe: If database has 0 items on serverless cold start, populate from seed data
+    if (items.length === 0 && (!category || category === "All")) {
+      try {
+        const seedModule = await import("@/lib/seedMenuItems.json");
+        const seedItems = seedModule.default || seedModule;
+        if (Array.isArray(seedItems) && seedItems.length > 0) {
+          console.log("[api/menu] Auto-seeding 100 menu items on serverless cold-start...");
+          await prisma.menuItem.createMany({
+            data: seedItems.map((s: any) => ({
+              id: s.id,
+              sku: s.sku,
+              name: s.name,
+              category: s.category,
+              price: s.price,
+              description: s.description || null,
+              image: s.image || null,
+              isAvailable: s.isAvailable !== false,
+              prepTimeMin: s.prepTimeMin || 5,
+              calories: s.calories || null,
+              sizes: s.sizes || null,
+            })),
+          });
+
+          items = await prisma.menuItem.findMany({
+            where,
+            include: {
+              modifiers: true,
+              recipeItems: {
+                include: {
+                  ingredient: true,
+                },
+              },
+            },
+            orderBy: [{ category: "asc" }, { price: "asc" }],
+          });
+        }
+      } catch (seedErr) {
+        console.warn("[api/menu] Auto-seed fallback error:", seedErr);
+      }
+    }
 
     const formattedItems = items.map((item) => {
       let sizeOptions = undefined;
@@ -46,7 +87,7 @@ export async function GET(req: NextRequest) {
   } catch (error: any) {
     console.error("Failed to fetch menu items:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to fetch menu items" },
+      { success: false, error: "Failed to fetch menu items: " + (error?.message || String(error)) },
       { status: 500 }
     );
   }

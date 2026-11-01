@@ -11,15 +11,40 @@ export interface MonthlyCloseRecord {
   isReset: boolean;
 }
 
-const FILE_PATH = path.join(process.cwd(), "prisma", "monthly_closes.json");
+import os from "os";
+
+function getFilePath(): string {
+  const isServerless = Boolean(
+    process.env.VERCEL ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME ||
+    process.env.NODE_ENV === "production"
+  );
+
+  if (isServerless) {
+    const tmpPath = path.join(os.tmpdir(), "monthly_closes.json");
+    if (!fs.existsSync(tmpPath)) {
+      const srcPath = path.join(process.cwd(), "prisma", "monthly_closes.json");
+      if (fs.existsSync(srcPath)) {
+        try {
+          fs.copyFileSync(srcPath, tmpPath);
+        } catch {
+          // ignore
+        }
+      }
+    }
+    return tmpPath;
+  }
+  return path.join(process.cwd(), "prisma", "monthly_closes.json");
+}
 
 function ensureFile(): MonthlyCloseRecord[] {
+  const filePath = getFilePath();
   try {
-    if (!fs.existsSync(FILE_PATH)) {
-      fs.writeFileSync(FILE_PATH, JSON.stringify([]), "utf-8");
+    if (!fs.existsSync(filePath)) {
+      fs.writeFileSync(filePath, JSON.stringify([]), "utf-8");
       return [];
     }
-    const data = fs.readFileSync(FILE_PATH, "utf-8");
+    const data = fs.readFileSync(filePath, "utf-8");
     return JSON.parse(data) || [];
   } catch (err) {
     console.error("Error reading monthly_closes.json:", err);
@@ -28,8 +53,9 @@ function ensureFile(): MonthlyCloseRecord[] {
 }
 
 function saveFile(records: MonthlyCloseRecord[]) {
+  const filePath = getFilePath();
   try {
-    fs.writeFileSync(FILE_PATH, JSON.stringify(records, null, 2), "utf-8");
+    fs.writeFileSync(filePath, JSON.stringify(records, null, 2), "utf-8");
   } catch (err) {
     console.error("Error writing monthly_closes.json:", err);
   }
