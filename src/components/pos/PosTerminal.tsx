@@ -9,10 +9,13 @@ import {
   OrderDto,
   ModifierDto,
 } from "@/lib/types";
-import { formatCurrency, AVAILABLE_COUPONS } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
+import { useLanguage } from "@/lib/LanguageContext";
 import ModifierModal from "./ModifierModal";
 import PaymentModal from "./PaymentModal";
 import ReceiptModal from "./ReceiptModal";
+import EditPriceModal from "./EditPriceModal";
+import ManagePricesModal from "./ManagePricesModal";
 import {
   Search,
   Plus,
@@ -20,21 +23,21 @@ import {
   Trash2,
   Utensils,
   ShoppingBag,
-  Car,
   Truck,
   Sparkles,
   Layers,
   ChevronRight,
   SlidersHorizontal,
-  Clock,
   Flame,
-  TicketPercent,
+  Pencil,
+  Tag,
 } from "lucide-react";
 
 interface BasketItem {
   cartItemId: string; // unique key in cart
   item: MenuItemDto;
   quantity: number;
+  selectedSize?: string;
   selectedModifierIds: string[];
   appliedModifiers: ModifierDto[];
   notes: string;
@@ -43,15 +46,32 @@ interface BasketItem {
 
 const CATEGORIES = [
   { name: "All", icon: "✨" },
+  { name: "Hot Deals", icon: "🔥" },
+  { name: "Pizzas", icon: "🍕" },
   { name: "Burgers", icon: "🍔" },
-  { name: "Sides", icon: "🍟" },
-  { name: "Beverages", icon: "🥤" },
-  { name: "Combos", icon: "🍱" },
-  { name: "Deals", icon: "🔥" },
+  { name: "Shawarma & Rolls", icon: "🌯" },
+  { name: "Fried Chicken", icon: "🍗" },
+  { name: "Fries & Sides", icon: "🍟" },
+  { name: "Pasta", icon: "🍝" },
+  { name: "Sandwiches", icon: "🥪" },
+  { name: "Ice Cream & Drinks", icon: "🍨" },
 ];
+
+export const FALLBACK_CATEGORY_IMAGES: Record<string, string> = {
+  "Pizzas": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&auto=format&fit=crop&q=80",
+  "Burgers": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&auto=format&fit=crop&q=80",
+  "Hot Deals": "https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&auto=format&fit=crop&q=80",
+  "Shawarma & Rolls": "https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=600&auto=format&fit=crop&q=80",
+  "Fried Chicken": "https://images.unsplash.com/photo-1562967914-608f82629710?w=600&auto=format&fit=crop&q=80",
+  "Fries & Sides": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=600&auto=format&fit=crop&q=80",
+  "Pasta": "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=600&auto=format&fit=crop&q=80",
+  "Sandwiches": "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=600&auto=format&fit=crop&q=80",
+  "Ice Cream & Drinks": "https://images.unsplash.com/photo-1501443762994-82bd5dace89a?w=600&auto=format&fit=crop&q=80",
+};
 
 export default function PosTerminal({ employeeId }: { employeeId?: string }) {
   const queryClient = useQueryClient();
+  const { t, isUrdu } = useLanguage();
 
   // Categories & Search Filter
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
@@ -61,16 +81,14 @@ export default function PosTerminal({ employeeId }: { employeeId?: string }) {
   const [basket, setBasket] = useState<BasketItem[]>([]);
   const [orderType, setOrderType] = useState<OrderType>("DINE_IN");
   const [customerName, setCustomerName] = useState<string>("");
+  const [customerPhone, setCustomerPhone] = useState<string>("");
+  const [deliveryAddress, setDeliveryAddress] = useState<string>("");
   const [orderNotes, setOrderNotes] = useState<string>("");
-  const [couponCode, setCouponCode] = useState<string>("");
-  const [appliedCoupon, setAppliedCoupon] = useState<{
-    code: string;
-    label: string;
-    discount: number;
-  } | null>(null);
 
   // Modals State
   const [customizingItem, setCustomizingItem] = useState<MenuItemDto | null>(null);
+  const [editingPriceItem, setEditingPriceItem] = useState<MenuItemDto | null>(null);
+  const [isManagePricesOpen, setIsManagePricesOpen] = useState<boolean>(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
   const [completedOrder, setCompletedOrder] = useState<OrderDto | null>(null);
   const [lastPaymentInfo, setLastPaymentInfo] = useState<{
@@ -99,7 +117,9 @@ export default function PosTerminal({ employeeId }: { employeeId?: string }) {
         selectedCategory === "All" || item.category === selectedCategory;
       const matchesSearch =
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.sku.toLowerCase().includes(searchQuery.toLowerCase());
+        item.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()));
+
       return matchesCategory && matchesSearch;
     });
   }, [menuItems, selectedCategory, searchQuery]);
@@ -115,18 +135,26 @@ export default function PosTerminal({ employeeId }: { employeeId?: string }) {
     return Array.from(map.values());
   }, [menuItems]);
 
-  // Quick Add Item (No modifiers)
+  // Helper to check if item has size options
+  const hasItemSizes = (item: MenuItemDto) => {
+    return Boolean(
+      (item.sizeOptions && item.sizeOptions.length > 0) ||
+      (item.sizes && item.sizes.length > 5)
+    );
+  };
+
+  // Quick Add Item (Direct add for single-size items, or opens size modal for sized items)
   const handleQuickAdd = (item: MenuItemDto) => {
+    if (hasItemSizes(item)) {
+      setCustomizingItem(item);
+      return;
+    }
+    const cartItemId = `${item.id}-std--`;
     setBasket((prev) => {
-      const existing = prev.find(
-        (b) =>
-          b.item.id === item.id &&
-          b.selectedModifierIds.length === 0 &&
-          b.notes === ""
-      );
+      const existing = prev.find((b) => b.cartItemId === cartItemId);
       if (existing) {
         return prev.map((b) =>
-          b.cartItemId === existing.cartItemId
+          b.cartItemId === cartItemId
             ? { ...b, quantity: b.quantity + 1 }
             : b
         );
@@ -134,9 +162,10 @@ export default function PosTerminal({ employeeId }: { employeeId?: string }) {
       return [
         ...prev,
         {
-          cartItemId: `${item.id}-${Date.now()}-${Math.random()}`,
+          cartItemId,
           item,
           quantity: 1,
+          selectedSize: undefined,
           selectedModifierIds: [],
           appliedModifiers: [],
           notes: "",
@@ -146,30 +175,46 @@ export default function PosTerminal({ employeeId }: { employeeId?: string }) {
     });
   };
 
-  // Add Item with Modifiers & Notes
+  // Add Item with Modifiers, Selected Size & Notes
   const handleAddWithModifiers = (
     item: MenuItemDto,
     selectedModifierIds: string[],
-    notes: string
+    notes: string,
+    selectedSize?: string,
+    unitPrice?: number
   ) => {
     const appliedModifiers = allAvailableModifiers.filter((m) =>
       selectedModifierIds.includes(m.id)
     );
-    const modPriceSum = appliedModifiers.reduce((acc, m) => acc + m.price, 0);
-    const unitPrice = item.price + modPriceSum;
+    const resolvedUnitPrice = typeof unitPrice === "number" ? unitPrice : item.price;
+    const sizeKey = selectedSize || "std";
+    const modKey = selectedModifierIds.slice().sort().join("_");
+    const notesKey = notes ? notes.trim().toLowerCase() : "";
+    const cartItemId = `${item.id}-${sizeKey}-${modKey}-${notesKey}`;
 
-    setBasket((prev) => [
-      ...prev,
-      {
-        cartItemId: `${item.id}-${Date.now()}-${Math.random()}`,
-        item,
-        quantity: 1,
-        selectedModifierIds,
-        appliedModifiers,
-        notes,
-        unitPrice,
-      },
-    ]);
+    setBasket((prev) => {
+      const existing = prev.find((b) => b.cartItemId === cartItemId);
+      if (existing) {
+        return prev.map((b) =>
+          b.cartItemId === cartItemId
+            ? { ...b, quantity: b.quantity + 1 }
+            : b
+        );
+      }
+      return [
+        ...prev,
+        {
+          cartItemId,
+          item,
+          quantity: 1,
+          selectedSize,
+          selectedModifierIds,
+          appliedModifiers,
+          notes,
+          unitPrice: resolvedUnitPrice,
+        },
+      ];
+    });
   };
 
   // Basket item quantity adjusters
@@ -194,9 +239,9 @@ export default function PosTerminal({ employeeId }: { employeeId?: string }) {
   const clearBasket = () => {
     setBasket([]);
     setCustomerName("");
+    setCustomerPhone("");
+    setDeliveryAddress("");
     setOrderNotes("");
-    setCouponCode("");
-    setAppliedCoupon(null);
   };
 
   // Financial Calculations
@@ -204,39 +249,15 @@ export default function PosTerminal({ employeeId }: { employeeId?: string }) {
     return basket.reduce((acc, b) => acc + b.unitPrice * b.quantity, 0);
   }, [basket]);
 
-  const discountAmount = useMemo(() => {
-    if (!appliedCoupon) return 0;
-    return Math.min(subtotal, appliedCoupon.discount);
-  }, [appliedCoupon, subtotal]);
+  const discountAmount = 0;
 
   const tax = useMemo(() => {
-    return Math.round(subtotal * 0.08 * 100) / 100;
-  }, [subtotal]);
+    return 0;
+  }, []);
 
   const grandTotal = useMemo(() => {
-    return Math.max(0, Math.round((subtotal + tax - discountAmount) * 100) / 100);
-  }, [subtotal, tax, discountAmount]);
-
-  // Apply Coupon Code
-  const handleApplyCoupon = () => {
-    const code = couponCode.trim().toUpperCase();
-    const coupon = AVAILABLE_COUPONS[code];
-    if (coupon) {
-      let disc = 0;
-      if (coupon.type === "FIXED") {
-        disc = coupon.value;
-      } else {
-        disc = Math.round(((subtotal * coupon.value) / 100) * 100) / 100;
-      }
-      setAppliedCoupon({
-        code,
-        label: coupon.label,
-        discount: disc,
-      });
-    } else {
-      alert("Invalid coupon code. Try SAVE100, BURGER10, or FEAST20.");
-    }
-  };
+    return Math.max(0, Math.round((subtotal + tax) * 100) / 100);
+  }, [subtotal, tax]);
 
   // Create Order Mutation
   const createOrderMutation = useMutation({
@@ -251,15 +272,18 @@ export default function PosTerminal({ employeeId }: { employeeId?: string }) {
         body: JSON.stringify({
           orderType,
           customerName: customerName.trim() || undefined,
+          customerPhone: customerPhone.trim() || undefined,
+          deliveryAddress: deliveryAddress.trim() || undefined,
           notes: orderNotes.trim() || undefined,
           paymentMethod: payload.paymentMethod,
           paymentStatus: "PAID",
-          discount: discountAmount,
-          couponCode: appliedCoupon?.code,
+          discount: 0,
           employeeId: employeeId || undefined,
           items: basket.map((b) => ({
             menuItemId: b.item.id,
             quantity: b.quantity,
+            size: b.selectedSize || undefined,
+            unitPrice: b.unitPrice,
             notes: b.notes || undefined,
             modifierIds: b.selectedModifierIds,
           })),
@@ -307,11 +331,11 @@ export default function PosTerminal({ employeeId }: { employeeId?: string }) {
   }, [basket, isPaymentModalOpen, customizingItem, completedOrder]);
 
   return (
-    <div className="flex-1 flex flex-col lg:flex-row h-[calc(100vh-4rem)] overflow-hidden bg-slate-950">
+    <div className="flex-1 min-h-0 flex flex-col lg:flex-row h-full overflow-hidden bg-slate-950">
       {/* LEFT COLUMN: Menu Categories, Search & Items Grid */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden border-r border-slate-800">
+      <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden border-r border-slate-700">
         {/* Top Control Bar: Search & Category Badges */}
-        <div className="p-4 bg-slate-900/60 border-b border-slate-800 space-y-3">
+        <div className="p-4 bg-slate-900 border-b border-slate-700 space-y-3">
           <div className="flex items-center gap-3">
             {/* Search Input */}
             <div className="relative flex-1">
@@ -320,23 +344,34 @@ export default function PosTerminal({ employeeId }: { employeeId?: string }) {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search menu by name or SKU (e.g. BRG-001)..."
-                className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder={t("Search menu by name or SKU (e.g. BRG-001)...")}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-100 text-xs cursor-pointer"
                 >
                   ✕
                 </button>
               )}
             </div>
 
-            {/* Item Counter Badge */}
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-2 bg-slate-800 rounded-xl border border-slate-700/70 text-xs font-semibold text-slate-300">
-              <Layers className="w-3.5 h-3.5 text-orange-400" />
-              <span>{filteredItems.length} Items</span>
+            {/* Item Counter Badge & Manage Prices Button */}
+            <div className="hidden sm:flex items-center gap-2">
+              <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 rounded-xl border border-slate-700 text-xs font-semibold text-slate-300">
+                <Layers className="w-3.5 h-3.5 text-orange-500" />
+                <span>{filteredItems.length} {t("Items")}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsManagePricesOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 hover:text-white rounded-xl border border-slate-700 text-xs font-bold transition-all cursor-pointer shadow-xs"
+                title="Open Price Manager to view and adjust any product's price"
+              >
+                <Tag className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
+                <span>{t("Edit Prices")}</span>
+              </button>
             </div>
           </div>
 
@@ -353,17 +388,17 @@ export default function PosTerminal({ employeeId }: { employeeId?: string }) {
                 <button
                   key={cat.name}
                   onClick={() => setSelectedCategory(cat.name)}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                     isSelected
-                      ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/20 ring-1 ring-orange-400/40"
-                      : "bg-slate-800/70 text-slate-300 border border-slate-700/60 hover:bg-slate-800 hover:text-white"
+                      ? "bg-orange-600 text-white shadow-sm"
+                      : "bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 hover:text-slate-100"
                   }`}
                 >
                   <span>{cat.icon}</span>
-                  <span>{cat.name}</span>
+                  <span>{t(cat.name)}</span>
                   <span
                     className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                      isSelected ? "bg-black/25 text-white" : "bg-slate-700 text-slate-400"
+                      isSelected ? "bg-orange-700 text-white" : "bg-slate-700 text-slate-400"
                     }`}
                   >
                     {count}
@@ -372,6 +407,17 @@ export default function PosTerminal({ employeeId }: { employeeId?: string }) {
               );
             })}
           </div>
+
+          {/* Pizza Categories Tip */}
+          {selectedCategory === "Pizzas" && (
+            <div className="flex items-center justify-between text-[11px] px-3 py-1.5 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400 font-medium animate-in fade-in duration-150">
+              <span className="flex items-center gap-1.5">
+                <span>🍕</span>
+                <span>All 29 flavors available in <strong>Small</strong>, <strong>Medium</strong>, <strong>Large</strong> & <strong>X-Large</strong></span>
+              </span>
+              <span className="text-slate-400 text-[10px] hidden sm:inline">Click any pizza to select size & toppings</span>
+            </div>
+          )}
         </div>
 
         {/* Menu Grid Container */}
@@ -394,77 +440,137 @@ export default function PosTerminal({ employeeId }: { employeeId?: string }) {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-4">
               {filteredItems.map((item) => {
-                const hasModifiers = item.modifiers && item.modifiers.length > 0;
+                const itemHasSizes = hasItemSizes(item);
+                let priceLabel = formatCurrency(item.price);
+                let sizeCount = 0;
+                if (item.sizeOptions && item.sizeOptions.length > 0) {
+                  sizeCount = item.sizeOptions.length;
+                  const minPrice = Math.min(...item.sizeOptions.map((s) => s.price));
+                  priceLabel = `${t("From")} ${formatCurrency(minPrice)}`;
+                } else if (item.sizes) {
+                  try {
+                    const parsed = JSON.parse(item.sizes);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                      sizeCount = parsed.length;
+                      const minPrice = Math.min(...parsed.map((s: any) => s.price));
+                      priceLabel = `${t("From")} ${formatCurrency(minPrice)}`;
+                    }
+                  } catch {}
+                }
+
                 return (
                   <div
                     key={item.id}
-                    className="group flex flex-col bg-slate-900/90 rounded-2xl border border-slate-800 hover:border-orange-500/50 shadow-md hover:shadow-orange-500/10 transition-all duration-200 overflow-hidden relative"
+                    onClick={() => itemHasSizes && setCustomizingItem(item)}
+                    className={`group flex flex-col bg-slate-900 rounded-xl border border-slate-700/80 hover:border-orange-500 shadow-sm transition-all duration-150 overflow-hidden relative ${
+                      itemHasSizes ? "cursor-pointer" : ""
+                    }`}
                   >
                     {/* Item Image with Prep & Calorie Badges */}
-                    <div className="relative h-32 sm:h-36 w-full bg-slate-950 overflow-hidden">
+                    <div className="relative h-32 sm:h-36 w-full bg-slate-800 overflow-hidden">
                       {item.image ? (
                         <img
                           src={item.image}
                           alt={item.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          loading="lazy"
+                          onError={(e) => {
+                            const fallback =
+                              FALLBACK_CATEGORY_IMAGES[item.category] ||
+                              FALLBACK_CATEGORY_IMAGES["Pizzas"];
+                            if (e.currentTarget.src !== fallback) {
+                              e.currentTarget.src = fallback;
+                            }
+                          }}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-slate-800">
-                          <Utensils className="w-8 h-8 text-slate-600" />
+                          <Utensils className="w-8 h-8 text-slate-500" />
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-black/30" />
 
                       {/* Top Badges */}
-                      <div className="absolute top-2 left-2 flex items-center gap-1">
-                        <span className="px-1.5 py-0.5 text-[9px] font-bold bg-slate-900/80 backdrop-blur text-slate-300 rounded border border-slate-700/60">
-                          {item.sku}
-                        </span>
-                      </div>
-
-                      {/* Prep time badge */}
-                      <div className="absolute bottom-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded bg-black/70 backdrop-blur text-[10px] text-amber-300 font-medium">
-                        <Clock className="w-3 h-3" />
-                        <span>{item.prepTimeMin}m</span>
-                      </div>
-
-                      {/* Price Tag */}
-                      <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-lg bg-orange-500 text-white font-black text-xs shadow-md">
-                        {formatCurrency(item.price)}
-                      </div>
+                      {itemHasSizes && (
+                        <div className="absolute top-2 left-2 flex items-center gap-1">
+                          <span className="px-1.5 py-0.5 text-[9px] font-bold bg-orange-600 text-white rounded">
+                            {sizeCount > 0 ? `${sizeCount} ${t("Sizes")}` : t("Multi-Size")}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Content */}
-                    <div className="p-3 flex-1 flex flex-col justify-between space-y-2">
+                    <div className="p-3 flex-1 flex flex-col justify-between space-y-2.5">
                       <div>
-                        <h4 className="font-bold text-white text-xs sm:text-sm line-clamp-1 group-hover:text-orange-400 transition-colors">
-                          {item.name}
-                        </h4>
-                        <p className="text-[11px] text-slate-400 line-clamp-2 mt-0.5 leading-snug">
+                        {/* Item Name & Single Prominent Price Tag */}
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="font-extrabold text-slate-100 text-xs sm:text-sm leading-snug line-clamp-2 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors flex-1" title={item.name}>
+                            {t(item.name)}
+                          </h4>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingPriceItem(item);
+                            }}
+                            title="Click to edit/update price for this item"
+                            className="shrink-0 px-3 py-1 rounded-xl bg-orange-600 hover:bg-orange-700 active:scale-95 text-white font-black text-sm sm:text-base font-mono tracking-tight shadow-sm flex items-center gap-1.5 transition-all cursor-pointer ring-1 ring-orange-500/40"
+                          >
+                            <span>{priceLabel}</span>
+                            <Pencil className="w-3 h-3 text-orange-200" />
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-slate-400 line-clamp-1 mt-1 leading-snug">
                           {item.description || item.category}
                         </p>
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="flex items-center gap-1.5 pt-1 border-t border-slate-800/80">
-                        {/* Quick Add Button */}
-                        <button
-                          onClick={() => handleQuickAdd(item)}
-                          className="flex-1 py-1.5 px-2 bg-slate-800 hover:bg-orange-500 active:scale-95 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1"
-                          title="Quick add to basket"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Add</span>
-                        </button>
-
-                        {/* Customize button */}
-                        <button
-                          onClick={() => setCustomizingItem(item)}
-                          className="p-1.5 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs transition-colors border border-slate-700/60"
-                          title="Customize add-ons & notes"
-                        >
-                          <SlidersHorizontal className="w-3.5 h-3.5" />
-                        </button>
+                      <div className="flex items-center gap-1.5 pt-1 border-t border-slate-700/60" onClick={(e) => e.stopPropagation()}>
+                        {itemHasSizes ? (
+                          <>
+                            <button
+                              onClick={() => setCustomizingItem(item)}
+                              className="flex-1 py-1.5 px-2 bg-orange-600 hover:bg-orange-700 active:scale-95 text-white rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                              title="Choose Small, Medium, Large, or X-Large"
+                            >
+                              <SlidersHorizontal className="w-3.5 h-3.5" />
+                              <span>{t("Select Size")}</span>
+                            </button>
+                            <button
+                              onClick={() => setEditingPriceItem(item)}
+                              className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-orange-400 rounded-lg text-xs transition-colors border border-slate-700 cursor-pointer"
+                              title="Edit size prices"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleQuickAdd(item)}
+                              className="flex-1 py-1.5 px-2 bg-orange-600 hover:bg-orange-700 active:scale-95 text-white rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 shadow-sm"
+                              title="Quick add to basket"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>{t("Add")}</span>
+                            </button>
+                            <button
+                              onClick={() => setCustomizingItem(item)}
+                              className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-100 rounded-lg text-xs transition-colors border border-slate-700 cursor-pointer"
+                              title="Customize add-ons & notes"
+                            >
+                              <SlidersHorizontal className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setEditingPriceItem(item)}
+                              className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-orange-400 rounded-lg text-xs transition-colors border border-slate-700 cursor-pointer"
+                              title="Edit item price"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -476,31 +582,30 @@ export default function PosTerminal({ employeeId }: { employeeId?: string }) {
       </div>
 
       {/* RIGHT COLUMN: Order Ticket & Tender Panel (Sticky) */}
-      <div className="w-full lg:w-[420px] xl:w-[450px] bg-slate-900 flex flex-col h-full border-t lg:border-t-0 border-slate-800 shadow-2xl">
+      <div className="w-full lg:w-[400px] xl:w-[430px] bg-slate-900 flex flex-col h-full shrink-0 border-t lg:border-t-0 border-slate-700 shadow-md overflow-hidden">
         {/* Ticket Header & Order Type Picker */}
-        <div className="p-4 border-b border-slate-800 bg-slate-950/70 space-y-3">
+        <div className="p-4 border-b border-slate-700 bg-slate-900 space-y-3 shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <ShoppingBag className="w-5 h-5 text-orange-500" />
-              <h3 className="font-black text-white text-base">Current Ticket</h3>
+              <ShoppingBag className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+              <h3 className="font-bold text-slate-100 text-base">{t("Current Ticket")}</h3>
             </div>
             {basket.length > 0 && (
               <button
                 onClick={clearBasket}
-                className="text-[11px] font-semibold text-red-400 hover:text-red-300 flex items-center gap-1 hover:underline"
+                className="text-[11px] font-semibold text-red-500 hover:text-red-400 flex items-center gap-1 hover:underline cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Clear (Esc)</span>
+                <span>{t("Clear")}</span>
               </button>
             )}
           </div>
 
-          {/* Order Type Buttons */}
-          <div className="grid grid-cols-4 gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800">
+          {/* Order Type Buttons (Dine-In, Takeaway, Delivery) */}
+          <div className="grid grid-cols-3 gap-1.5 bg-slate-800 p-1 rounded-xl border border-slate-700">
             {[
               { type: "DINE_IN" as OrderType, label: "Dine-In", icon: Utensils },
               { type: "TAKEAWAY" as OrderType, label: "Takeaway", icon: ShoppingBag },
-              { type: "DRIVE_THRU" as OrderType, label: "Drive-Thru", icon: Car },
               { type: "DELIVERY" as OrderType, label: "Delivery", icon: Truck },
             ].map((ot) => {
               const Icon = ot.icon;
@@ -510,28 +615,62 @@ export default function PosTerminal({ employeeId }: { employeeId?: string }) {
                   key={ot.type}
                   type="button"
                   onClick={() => setOrderType(ot.type)}
-                  className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg text-[10px] font-bold transition-all ${
+                  className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
                     isSelected
-                      ? "bg-orange-500 text-white shadow-sm"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                      ? "bg-orange-600 text-white shadow-sm"
+                      : "text-slate-400 hover:text-slate-100 hover:bg-slate-700/50"
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5 mb-0.5" />
-                  <span>{ot.label}</span>
+                  <span>{t(ot.label)}</span>
                 </button>
               );
             })}
           </div>
 
           {/* Customer / Reference Input */}
-          <div className="flex gap-2">
+          <div className="space-y-2">
             <input
               type="text"
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
-              placeholder="Customer Name / Table / Vehicle..."
-              className="flex-1 bg-slate-800/80 border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+              placeholder={orderType === "DELIVERY" ? t("Customer Full Name...") : (isUrdu ? "گاہک کا نام / ٹیبل نمبر..." : "Customer Name / Table #...")}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-orange-500"
             />
+
+            {/* Delivery-Specific Details */}
+            {orderType === "DELIVERY" && (
+              <div className="space-y-2 pt-1.5 border-t border-slate-700 animate-in fade-in duration-200">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input
+                    type="tel"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    placeholder={t("Phone (e.g. 0301-4694202)")}
+                    className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                  />
+                  <input
+                    type="text"
+                    value={deliveryAddress}
+                    onChange={(e) => setDeliveryAddress(e.target.value)}
+                    placeholder={t("Delivery Address (Khichiwala)")}
+                    className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                  />
+                </div>
+
+                {subtotal > 0 && subtotal < 500 ? (
+                  <div className="px-2.5 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[11px] font-medium flex items-center justify-between">
+                    <span>⚠️ Min. Delivery Order: Rs. 500</span>
+                    <span className="font-bold text-amber-200">Add {formatCurrency(500 - subtotal)} more</span>
+                  </div>
+                ) : subtotal >= 500 ? (
+                  <div className="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[11px] font-medium flex items-center justify-between">
+                    <span>🚚 Fast & Free Home Delivery Qualified!</span>
+                    <span className="font-bold text-emerald-400">FREE</span>
+                  </div>
+                ) : null}
+              </div>
+            )}
           </div>
         </div>
 
@@ -540,22 +679,29 @@ export default function PosTerminal({ employeeId }: { employeeId?: string }) {
           {basket.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center py-12 text-slate-500">
               <ShoppingBag className="w-10 h-10 stroke-[1.5] mb-2 opacity-50" />
-              <p className="font-semibold text-xs text-slate-400">Your basket is empty</p>
+              <p className="font-semibold text-xs text-slate-400">{t("Your basket is empty")}</p>
               <p className="text-[11px] text-slate-500 mt-1 max-w-[200px]">
-                Click items on the left to add them to this order ticket.
+                {t("Click items on the left to add them to this order ticket.")}
               </p>
             </div>
           ) : (
             basket.map((b) => (
               <div
                 key={b.cartItemId}
-                className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 space-y-1.5 hover:border-slate-700 transition-colors"
+                className="bg-slate-800 border border-slate-700 rounded-xl p-3 space-y-1.5 hover:border-slate-600 transition-colors"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <h5 className="font-bold text-white text-xs truncate">
-                      {b.item.name}
-                    </h5>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h5 className="font-bold text-slate-100 text-xs truncate">
+                        {b.item.name}
+                      </h5>
+                      {b.selectedSize && (
+                        <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-orange-600/10 text-orange-600 dark:text-orange-400 border border-orange-500/20">
+                          {b.selectedSize}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-[11px] text-slate-400">
                       {formatCurrency(b.unitPrice)} each
                     </div>
@@ -563,31 +709,31 @@ export default function PosTerminal({ employeeId }: { employeeId?: string }) {
 
                   {/* Quantity adjustment & Line total */}
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center bg-slate-800 rounded-lg border border-slate-700 p-0.5">
+                    <div className="flex items-center bg-slate-900 rounded-lg border border-slate-700 p-0.5">
                       <button
                         onClick={() => updateQuantity(b.cartItemId, -1)}
-                        className="p-1 text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors"
+                        className="p-1 text-slate-400 hover:text-slate-100 hover:bg-slate-700 rounded transition-colors cursor-pointer"
                       >
                         <Minus className="w-3 h-3" />
                       </button>
-                      <span className="w-6 text-center text-xs font-black text-white">
+                      <span className="w-6 text-center text-xs font-bold text-slate-100">
                         {b.quantity}
                       </span>
                       <button
                         onClick={() => updateQuantity(b.cartItemId, 1)}
-                        className="p-1 text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors"
+                        className="p-1 text-slate-400 hover:text-slate-100 hover:bg-slate-700 rounded transition-colors cursor-pointer"
                       >
                         <Plus className="w-3 h-3" />
                       </button>
                     </div>
 
-                    <div className="w-16 text-right font-black text-xs text-orange-400">
+                    <div className="w-16 text-right font-bold text-xs text-orange-600 dark:text-orange-400">
                       {formatCurrency(b.unitPrice * b.quantity)}
                     </div>
 
                     <button
                       onClick={() => removeBasketItem(b.cartItemId)}
-                      className="p-1 text-slate-500 hover:text-red-400 transition-colors"
+                      className="p-1 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -600,7 +746,7 @@ export default function PosTerminal({ employeeId }: { employeeId?: string }) {
                     {b.appliedModifiers.map((mod) => (
                       <span
                         key={mod.id}
-                        className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-500/15 text-orange-300 border border-orange-500/30"
+                        className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20"
                       >
                         +{mod.name}
                       </span>
@@ -610,7 +756,7 @@ export default function PosTerminal({ employeeId }: { employeeId?: string }) {
 
                 {/* Special Instructions Note */}
                 {b.notes && (
-                  <p className="text-[10px] text-amber-300/90 italic bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                  <p className="text-[10px] text-amber-600 dark:text-amber-400 italic bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
                     &quot;{b.notes}&quot;
                   </p>
                 )}
@@ -619,74 +765,53 @@ export default function PosTerminal({ employeeId }: { employeeId?: string }) {
           )}
         </div>
 
-        {/* Financial Calculation Breakdown & Coupon Code */}
-        <div className="p-4 bg-slate-950 border-t border-slate-800 space-y-3">
-          {/* Coupon Code Input */}
-          <div className="flex items-center gap-1.5">
-            <div className="relative flex-1">
-              <TicketPercent className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={couponCode}
-                onChange={(e) => setCouponCode(e.target.value)}
-                placeholder="Coupon (e.g. SAVE100, BURGER10)"
-                className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 uppercase focus:outline-none focus:ring-1 focus:ring-orange-500"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={handleApplyCoupon}
-              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 rounded-xl border border-slate-700"
-            >
-              Apply
-            </button>
-          </div>
-
-          {/* Applied Coupon Tag */}
-          {appliedCoupon && (
-            <div className="flex items-center justify-between text-xs px-2.5 py-1 rounded-lg bg-emerald-950/50 border border-emerald-500/40 text-emerald-300">
-              <span>{appliedCoupon.label}</span>
-              <button
-                onClick={() => setAppliedCoupon(null)}
-                className="text-xs hover:text-white"
-              >
-                ✕
-              </button>
-            </div>
-          )}
+        {/* Financial Calculation Breakdown */}
+        <div className="p-4 bg-slate-900 border-t border-slate-700 space-y-3 shrink-0">
 
           {/* Line by line totals */}
           <div className="space-y-1.5 text-xs text-slate-300 pt-1">
             <div className="flex justify-between">
-              <span className="text-slate-400">Subtotal:</span>
-              <span>{formatCurrency(subtotal)}</span>
+              <span className="text-slate-400">{t("Subtotal:")}</span>
+              <span className="text-slate-200">{formatCurrency(subtotal)}</span>
             </div>
             {discountAmount > 0 && (
-              <div className="flex justify-between text-emerald-400">
-                <span>Discount:</span>
+              <div className="flex justify-between text-emerald-500">
+                <span>{t("Discount:")}</span>
                 <span>-{formatCurrency(discountAmount)}</span>
               </div>
             )}
-            <div className="flex justify-between">
-              <span className="text-slate-400">Sales Tax (8%):</span>
-              <span>{formatCurrency(tax)}</span>
-            </div>
-            <div className="flex justify-between pt-2 border-t border-slate-800 text-base font-black text-white">
-              <span>Total Due:</span>
-              <span className="text-orange-400 text-xl">{formatCurrency(grandTotal)}</span>
+            {tax > 0 && (
+              <div className="flex justify-between">
+                <span className="text-slate-400">{t("Sales Tax:")}</span>
+                <span className="text-slate-200">{formatCurrency(tax)}</span>
+              </div>
+            )}
+            <div className="flex justify-between pt-2 border-t border-slate-700 text-base font-bold text-slate-100">
+              <span>{t("Total Due:")}</span>
+              <span className="text-orange-600 dark:text-orange-400 text-xl font-bold">{formatCurrency(grandTotal)}</span>
             </div>
           </div>
 
           {/* Checkout / Payment Trigger Button */}
-          <button
-            type="button"
-            disabled={basket.length === 0}
-            onClick={() => setIsPaymentModalOpen(true)}
-            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-orange-500 via-orange-600 to-amber-500 hover:from-orange-600 hover:to-amber-600 disabled:opacity-50 disabled:pointer-events-none active:scale-98 text-white font-black text-sm shadow-xl shadow-orange-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
-          >
-            <span>Proceed to Payment</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
+          {orderType === "DELIVERY" && basket.length > 0 && subtotal < 500 ? (
+            <button
+              type="button"
+              disabled
+              className="w-full py-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 font-bold text-xs flex items-center justify-center gap-2 cursor-not-allowed opacity-80"
+            >
+              <span>{t("Min. Delivery Order Rs. 500")} ({t("Add")} {formatCurrency(500 - subtotal)})</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={basket.length === 0}
+              onClick={() => setIsPaymentModalOpen(true)}
+              className="w-full py-3.5 rounded-xl bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:pointer-events-none active:scale-98 text-white font-bold text-sm shadow-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <span>{t("Proceed to Payment")}</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -720,6 +845,26 @@ export default function PosTerminal({ employeeId }: { employeeId?: string }) {
           onNewOrder={() => setCompletedOrder(null)}
         />
       )}
+
+      {/* Single Item Edit Price Modal */}
+      <EditPriceModal
+        item={editingPriceItem}
+        isOpen={!!editingPriceItem}
+        onClose={() => setEditingPriceItem(null)}
+        onPriceUpdated={() => {
+          queryClient.invalidateQueries({ queryKey: ["menu"] });
+        }}
+      />
+
+      {/* Global Product Price Manager Modal */}
+      <ManagePricesModal
+        isOpen={isManagePricesOpen}
+        onClose={() => setIsManagePricesOpen(false)}
+        items={menuItems}
+        onEditItemPrice={(item) => {
+          setEditingPriceItem(item);
+        }}
+      />
     </div>
   );
 }

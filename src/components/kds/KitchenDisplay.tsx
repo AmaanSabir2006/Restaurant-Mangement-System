@@ -274,13 +274,31 @@ export default function KitchenDisplay() {
                   </div>
 
                   {/* Customer / Destination Info */}
-                  <div className="px-4 py-2 bg-slate-950/60 border-b border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-                    <span className="font-semibold text-slate-300">
-                      {order.customerName || "Walk-in Guest"}
-                    </span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                      {urgency.label}
-                    </span>
+                  <div className="px-4 py-2 bg-slate-950/60 border-b border-slate-800/80 text-xs text-slate-400 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-200">
+                        {order.customerName || "Walk-in Guest"}
+                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        {urgency.label}
+                      </span>
+                    </div>
+                    {(order.customerPhone || order.deliveryAddress) && (
+                      <div className="text-[11px] text-amber-300/90 font-medium space-y-0.5 pt-0.5 border-t border-slate-800/60">
+                        {order.customerPhone && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-slate-400 text-[10px]">Tel:</span>
+                            <span className="font-mono">{order.customerPhone}</span>
+                          </div>
+                        )}
+                        {order.deliveryAddress && (
+                          <div className="flex items-start gap-1.5">
+                            <span className="text-slate-400 text-[10px]">To:</span>
+                            <span className="line-clamp-1">{order.deliveryAddress}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Order Items List */}
@@ -295,9 +313,16 @@ export default function KitchenDisplay() {
                             <span className="w-6 h-6 rounded-lg bg-orange-500/20 text-orange-400 font-black text-xs flex items-center justify-center border border-orange-500/30">
                               {item.quantity}x
                             </span>
-                            <span className="font-bold text-white text-sm">
-                              {item.menuItem?.name || "Item"}
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-bold text-white text-sm">
+                                {item.menuItem?.name || "Item"}
+                              </span>
+                              {item.size && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-orange-500/20 text-orange-400 border border-orange-500/40 uppercase tracking-wide">
+                                  {item.size}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
 

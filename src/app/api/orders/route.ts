@@ -20,6 +20,8 @@ export async function GET(req: NextRequest) {
       };
     } else if (status) {
       where.status = status;
+    } else {
+      where.status = { notIn: ["ARCHIVED", "CANCELLED"] };
     }
 
     const orders = await prisma.order.findMany({
@@ -80,6 +82,7 @@ export async function POST(req: NextRequest) {
     interface PreparedItem {
       menuItemId: string;
       quantity: number;
+      size: string | null;
       unitPrice: number;
       notes: string | null;
       modifiers: {
@@ -100,6 +103,24 @@ export async function POST(req: NextRequest) {
       }
 
       let itemUnitPrice = dbItem.price;
+      if (item.size && dbItem.sizes) {
+        try {
+          const parsedSizes = JSON.parse(dbItem.sizes);
+          const matchedSize = parsedSizes.find((s: any) => s.name.toLowerCase() === item.size?.toLowerCase());
+          if (matchedSize) {
+            itemUnitPrice = matchedSize.price;
+          } else if (typeof item.unitPrice === "number" && item.unitPrice > 0) {
+            itemUnitPrice = item.unitPrice;
+          }
+        } catch {
+          if (typeof item.unitPrice === "number" && item.unitPrice > 0) {
+            itemUnitPrice = item.unitPrice;
+          }
+        }
+      } else if (typeof item.unitPrice === "number" && item.unitPrice > 0) {
+        itemUnitPrice = item.unitPrice;
+      }
+
       const appliedModifiers: { modifierId: string; name: string; price: number }[] = [];
 
       if (item.modifierIds && item.modifierIds.length > 0) {
@@ -122,14 +143,15 @@ export async function POST(req: NextRequest) {
       itemsToCreate.push({
         menuItemId: dbItem.id,
         quantity: item.quantity,
+        size: item.size || null,
         unitPrice: itemUnitPrice,
         notes: item.notes || null,
         modifiers: appliedModifiers,
       });
     }
 
-    // Default 8% standard sales tax
-    const tax = Math.round(subtotal * 0.08 * 100) / 100;
+    // Sales tax removed (0%)
+    const tax = 0;
     const discount = Math.min(subtotal, Math.round((input.discount || 0) * 100) / 100);
     const serviceCharge = Math.round((input.serviceCharge || 0) * 100) / 100;
     const totalAmount = Math.max(0, Math.round((subtotal + tax + serviceCharge - discount) * 100) / 100);
@@ -156,6 +178,8 @@ export async function POST(req: NextRequest) {
           paymentMethod: input.paymentMethod,
           paymentStatus: input.paymentStatus || "PAID",
           customerName: input.customerName || null,
+          customerPhone: input.customerPhone || null,
+          deliveryAddress: input.deliveryAddress || null,
           notes: input.notes || null,
           employeeId: input.employeeId || null,
         },
@@ -167,6 +191,7 @@ export async function POST(req: NextRequest) {
             orderId: createdOrder.id,
             menuItemId: item.menuItemId,
             quantity: item.quantity,
+            size: item.size,
             unitPrice: item.unitPrice,
             notes: item.notes,
           },
@@ -182,6 +207,66 @@ export async function POST(req: NextRequest) {
                 price: mod.price,
               },
             });
+          }
+        }
+
+        // Automatic Stock Maintenance & Deduction
+        const dbItem = menuItemMap.get(item.menuItemId);
+        if (dbItem) {
+          const cat = dbItem.category?.toLowerCase() || "";
+          const nameLower = dbItem.name.toLowerCase();
+          const sizeLower = item.size?.toLowerCase() || "medium";
+          const qty = item.quantity;
+
+          // Helper to deduct ingredient
+          const deductIngredient = async (searchPattern: string, amount: number) => {
+            const ing = await tx.ingredient.findFirst({
+              where: { name: { contains: searchPattern } },
+            });
+            if (ing) {
+              await tx.ingredient.update({
+                where: { id: ing.id },
+                data: { currentStock: { decrement: amount } },
+              });
+              await tx.stockTransaction.create({
+                data: {
+                  ingredientId: ing.id,
+                  type: "USAGE",
+                  quantity: -amount,
+                  referenceId: createdOrder.id,
+                  reason: `Used for Order #${createdOrder.orderNumber}: ${item.quantity}x ${dbItem.name}${item.size ? ` (${item.size})` : ""}`,
+                },
+              });
+            }
+          };
+
+          if (cat.includes("pizza")) {
+            // Dough
+            if (sizeLower.includes("small")) await deductIngredient("Dough Ball (Small)", 1 * qty);
+            else if (sizeLower.includes("large") && !sizeLower.includes("x-large")) await deductIngredient("Dough Ball (Large)", 1 * qty);
+            else if (sizeLower.includes("x-large")) await deductIngredient("Dough Ball (X-Large)", 1 * qty);
+            else await deductIngredient("Dough Ball (Medium)", 1 * qty);
+
+            // Cheese & Sauce
+            const cheeseGrams = sizeLower.includes("small") ? 150 : sizeLower.includes("x-large") ? 450 : sizeLower.includes("large") ? 350 : 250;
+            await deductIngredient("Cheese Blend", cheeseGrams * qty);
+            await deductIngredient("Pizza Sauce", 50 * qty);
+            await deductIngredient("Chicken", 120 * qty);
+          } else if (cat.includes("burger")) {
+            await deductIngredient("Burger Buns", 1 * qty);
+            if (nameLower.includes("zinger")) await deductIngredient("Zinger Chicken", 1 * qty);
+            else await deductIngredient("Chicken", 80 * qty);
+          } else if (cat.includes("shawarma") || cat.includes("roll")) {
+            if (nameLower.includes("paratha")) await deductIngredient("Paratha Dough", 1 * qty);
+            else await deductIngredient("Pita Bread", 1 * qty);
+            await deductIngredient("Chicken", 100 * qty);
+          } else if (cat.includes("fries") || cat.includes("sides")) {
+            await deductIngredient("French Fries", 200 * qty);
+          } else if (cat.includes("fried chicken")) {
+            const wingsCount = nameLower.includes("10") ? 10 : 5;
+            await deductIngredient("Wings", wingsCount * qty);
+          } else if (cat.includes("drink")) {
+            await deductIngredient("Drink Bottles", 1 * qty);
           }
         }
       }
@@ -202,6 +287,7 @@ export async function POST(req: NextRequest) {
 
     // Broadcast real-time event for KDS & dashboards
     broadcastRealtimeEvent("ORDER_CREATED", newOrder);
+    broadcastRealtimeEvent("STOCK_UPDATED", {});
 
     return NextResponse.json({ success: true, order: newOrder }, { status: 201 });
   } catch (error: any) {

@@ -5,6 +5,8 @@ export const createOrderSchema = z.object({
     message: "Invalid order type",
   }),
   customerName: z.string().optional().nullable(),
+  customerPhone: z.string().optional().nullable(),
+  deliveryAddress: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   paymentMethod: z.enum(["CASH", "CARD", "QR_MOBILE"], {
     message: "Invalid payment method",
@@ -19,6 +21,8 @@ export const createOrderSchema = z.object({
       z.object({
         menuItemId: z.string().min(1, "Menu item ID is required"),
         quantity: z.number().int().min(1, "Quantity must be at least 1"),
+        size: z.string().optional().nullable(),
+        unitPrice: z.number().optional().nullable(),
         notes: z.string().optional().nullable(),
         modifierIds: z.array(z.string()).optional().default([]),
       })
@@ -37,14 +41,19 @@ export const updateOrderStatusSchema = z.object({
 export type UpdateOrderStatusInput = z.infer<typeof updateOrderStatusSchema>;
 
 export const stockAdjustmentSchema = z.object({
-  ingredientId: z.string().min(1, "Ingredient is required"),
+  ingredientId: z.string().optional().nullable(),
+  newIngredientName: z.string().optional().nullable(),
+  unit: z.string().optional().nullable(),
   type: z.enum(["WASTE", "ADJUSTMENT", "RESTOCK"], {
     message: "Type must be WASTE, ADJUSTMENT, or RESTOCK",
   }),
   quantity: z.number().refine((val) => val !== 0, {
     message: "Quantity cannot be zero",
   }),
-  reason: z.string().min(3, "Reason must be at least 3 characters"),
+  supplier: z.string().optional().nullable(),
+  costPerUnit: z.number().optional().nullable(),
+  totalCost: z.number().optional().nullable(),
+  reason: z.string().optional().nullable(),
 });
 
 export type StockAdjustmentInput = z.infer<typeof stockAdjustmentSchema>;
@@ -69,6 +78,7 @@ export const updateMenuItemSchema = z.object({
   isAvailable: z.boolean().optional(),
   price: z.number().positive().optional(),
   name: z.string().min(2).optional(),
+  sizes: z.union([z.string(), z.array(z.any())]).optional().nullable(),
 });
 
 export type UpdateMenuItemInput = z.infer<typeof updateMenuItemSchema>;

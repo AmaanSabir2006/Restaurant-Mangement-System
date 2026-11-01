@@ -46,8 +46,9 @@ export function formatTimer(totalSeconds: number): string {
 
 // Available discount coupons
 export const AVAILABLE_COUPONS: Record<string, { label: string; type: "FIXED" | "PERCENT"; value: number }> = {
-  SAVE100: { label: "Rs. 100 Off order", type: "FIXED", value: 100 },
-  BURGER10: { label: "10% Off order", type: "PERCENT", value: 10 },
-  FEAST20: { label: "20% Off Big Orders", type: "PERCENT", value: 20 },
+  PIZZA100: { label: "Rs. 100 Off Pizza World Special", type: "FIXED", value: 100 },
+  HOTDEAL10: { label: "10% Off Hot Deals", type: "PERCENT", value: 10 },
+  FAMILY20: { label: "20% Off Family Feast", type: "PERCENT", value: 20 },
+  KHICHIWALA: { label: "Local Khichiwala Special (15% Off)", type: "PERCENT", value: 15 },
   STAFF50: { label: "Staff Discount (50% Off)", type: "PERCENT", value: 50 },
 };

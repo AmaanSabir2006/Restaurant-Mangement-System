@@ -8,7 +8,17 @@ export type PaymentMethod = "CASH" | "CARD" | "QR_MOBILE";
 
 export type StockTransactionType = "USAGE" | "RESTOCK" | "WASTE" | "ADJUSTMENT";
 
-export type MenuCategory = "All" | "Burgers" | "Sides" | "Beverages" | "Combos" | "Deals";
+export type MenuCategory =
+  | "All"
+  | "Hot Deals"
+  | "Pizzas"
+  | "Burgers"
+  | "Shawarma & Rolls"
+  | "Fried Chicken"
+  | "Fries & Sides"
+  | "Pasta"
+  | "Sandwiches"
+  | "Ice Cream & Drinks";
 
 export interface EmployeeDto {
   id: string;
@@ -38,12 +48,19 @@ export interface RecipeItemDto {
   };
 }
 
+export interface ItemSizeOption {
+  name: string;
+  price: number;
+}
+
 export interface MenuItemDto {
   id: string;
   sku: string;
   name: string;
   category: string;
   price: number;
+  sizes?: string | null;
+  sizeOptions?: ItemSizeOption[];
   description?: string | null;
   image?: string | null;
   isAvailable: boolean;
@@ -65,6 +82,7 @@ export interface OrderItemDto {
   orderId: string;
   menuItemId: string;
   quantity: number;
+  size?: string | null;
   unitPrice: number;
   notes?: string | null;
   menuItem?: MenuItemDto;
@@ -84,6 +102,8 @@ export interface OrderDto {
   paymentMethod: PaymentMethod;
   paymentStatus: string;
   customerName?: string | null;
+  customerPhone?: string | null;
+  deliveryAddress?: string | null;
   notes?: string | null;
   employeeId?: string | null;
   employee?: EmployeeDto | null;
@@ -113,6 +133,9 @@ export interface StockTransactionDto {
   ingredientId: string;
   type: StockTransactionType;
   quantity: number;
+  supplier?: string | null;
+  costPerUnit?: number | null;
+  totalCost?: number | null;
   reason?: string | null;
   referenceId?: string | null;
   createdAt: string;
@@ -145,10 +168,23 @@ export interface PurchaseOrderDto {
 
 export interface AnalyticsSummaryDto {
   dailySales: number;
+  totalRevenue: number;
   todayOrdersCount: number;
+  totalOrdersCount: number;
+  avgTicketValue: number;
   activeOrdersCount: number;
   averagePrepTimeMinutes: number;
   lowStockItemsCount: number;
+  lowStockItems?: {
+    id: string;
+    name: string;
+    unit: string;
+    currentStock: number;
+    reorderThreshold: number;
+    supplier?: string | null;
+    costPerUnit?: number;
+    status: "LOW" | "OUT_OF_STOCK";
+  }[];
   hourlySales: {
     hour: string;
     sales: number;
@@ -159,10 +195,133 @@ export interface AnalyticsSummaryDto {
     quantity: number;
     revenue: number;
   }[];
+  fastFoodSales?: {
+    id: string;
+    name: string;
+    category: string;
+    quantity: number;
+    revenue: number;
+  }[];
+  categorySales?: {
+    category: string;
+    quantity: number;
+    revenue: number;
+  }[];
   wasteVsUsage: {
     ingredientName: string;
     usage: number;
     waste: number;
     unit: string;
   }[];
+  monthKey?: string;
+  monthLabel?: string;
+  monthSales?: number;
+  monthOrdersCount?: number;
+  monthSuppliesCost?: number;
+  monthSuppliesPaid?: number;
+  monthSuppliesPending?: number;
+  netMonthlyProfit?: number;
+  isMonthReset?: boolean;
+  availableMonths?: {
+    key: string;
+    label: string;
+    sales: number;
+    orders: number;
+    isReset?: boolean;
+  }[];
+}
+
+export interface DailySupplyDto {
+  id: string;
+  personName: string;
+  itemName: string;
+  quantity: number;
+  unit: string;
+  totalCost: number;
+  paymentStatus: "PAID" | "PENDING";
+  notes?: string | null;
+  monthKey: string;
+  isArchived: boolean;
+  date: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PersonExpenseSummary {
+  personName: string;
+  totalCost: number;
+  count: number;
+  paidAmount: number;
+  pendingAmount: number;
+}
+
+export interface ItemExpenseSummary {
+  itemName: string;
+  totalCost: number;
+  totalQuantity: number;
+  unit: string;
+  count: number;
+}
+
+export interface MonthlySuppliesAnalyticsDto {
+  monthKey: string;
+  monthLabel: string;
+  totalCost: number;
+  totalPaid: number;
+  totalPending: number;
+  totalEntries: number;
+  byPerson: PersonExpenseSummary[];
+  byItem: ItemExpenseSummary[];
+  availableMonths: {
+    key: string;
+    label: string;
+    totalCost: number;
+    count: number;
+  }[];
+}
+
+export interface DailyLogItemSoldDto {
+  id: string;
+  name: string;
+  category: string;
+  quantitySold: number;
+  unitPrice: number;
+  totalRevenue: number;
+  percentageOfSales: number;
+}
+
+export interface DailyLogVendorSummaryDto {
+  personName: string;
+  itemsCount: number;
+  totalSuppliesCost: number;
+  paidAmount: number;
+  pendingAmount: number;
+  overallPendingBalance: number;
+  status: "CLEARED" | "PENDING";
+}
+
+export interface DailyLogResponseDto {
+  date: string;
+  formattedDate: string;
+  salesSummary: {
+    totalRevenue: number;
+    ordersCount: number;
+    cashSales: number;
+    cardSales: number;
+    itemsSold: DailyLogItemSoldDto[];
+  };
+  suppliesSummary: {
+    totalCost: number;
+    totalPaid: number;
+    totalPending: number;
+    entriesCount: number;
+    supplies: DailySupplyDto[];
+  };
+  vendorSettlementSummary: DailyLogVendorSummaryDto[];
+  cashFlow: {
+    totalSales: number;
+    cashPaidOut: number;
+    netCashFlow: number;
+    pendingUdhaarToday: number;
+  };
 }

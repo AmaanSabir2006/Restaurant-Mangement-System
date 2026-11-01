@@ -29,6 +29,7 @@ model MenuItem {
   isAvailable Boolean      @default(true)
   prepTimeMin Int          @default(5)
   calories    Int?
+  sizes       String?      // JSON string of available sizes/variants e.g. [{"name":"Small","price":600}, ...]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -92,9 +93,11 @@ model Order {
   totalAmount   Float
   paymentMethod String      @default("CASH") // CASH | CARD | QR_MOBILE
   paymentStatus String      @default("PAID") // PAID | PENDING
-  customerName  String?
-  notes         String?
-  employeeId    String?
+  customerName    String?
+  customerPhone   String?
+  deliveryAddress String?
+  notes           String?
+  employeeId      String?
   
   prepStartTime DateTime?
   readyTime     DateTime?
@@ -111,6 +114,7 @@ model OrderItem {
   orderId    String
   menuItemId String
   quantity   Int
+  size       String?
   unitPrice  Float
   notes      String?
 
@@ -135,8 +139,11 @@ model StockTransaction {
   ingredientId String
   type         String     // USAGE | RESTOCK | WASTE | ADJUSTMENT
   quantity     Float      // positive for restock/gain, negative for usage/waste/loss
-  reason       String?
-  referenceId  String?    // e.g. orderId or purchaseOrderId
+  supplier     String?    // Person/Supplier name (e.g. Ahmed, Ali)
+  costPerUnit  Float?     // Rate per unit paid
+  totalCost    Float?     // Total price paid
+  reason       String?    // Notes or description
+  referenceId  String?    // e.g. orderId or delivery note #
   createdAt    DateTime   @default(now())
 
   ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
@@ -164,4 +171,20 @@ model PurchaseOrderItem {
 
   purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
   ingredient    Ingredient    @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+}
+
+model DailySupply {
+  id            String   @id @default(cuid())
+  personName    String   // Person who brought the item (Ahmed, Ali, Tariq, Babar, City Bakers, etc.)
+  itemName      String   // Item brought (Onions, Potatoes, Chicken, Shami, Bread/Buns, etc.)
+  quantity      Float    @default(1.0)
+  unit          String   @default("kg") // kg, pcs, packets, crates, etc.
+  totalCost     Float    // Money given / price in PKR
+  paymentStatus String   @default("PAID") // PAID | PENDING (Udhaar)
+  notes         String?
+  monthKey      String   // e.g. "2026-11"
+  isArchived    Boolean  @default(false)
+  date          DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

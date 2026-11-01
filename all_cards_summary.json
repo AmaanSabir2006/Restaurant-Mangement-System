@@ -1,0 +1,450 @@
+[
+  {
+    "idShort": 14,
+    "list": "Product Backlog",
+    "title": "As a Kitchen Cook / Cashier, I want to hear a distinctive bell chime when an order arrives and a success tone when completed, So that staff are alerted audibly even if looking away from the screen.",
+    "labels": [
+      "Realtime-Infra"
+    ],
+    "checklists": [
+      {
+        "title": "Checklist",
+        "items": [
+          {
+            "name": "Implement SoundManager class with lazy AudioContext initialization",
+            "state": "incomplete"
+          },
+          {
+            "name": "Create multi-oscillator frequency ramps for realistic kitchen bell sound",
+            "state": "incomplete"
+          },
+          {
+            "name": "Add sound toggle button in Navbar.tsx with mute icon",
+            "state": "incomplete"
+          },
+          {
+            "name": "Persist sound preference in localStorage(\"kds_sound_enabled\")",
+            "state": "incomplete"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "idShort": 15,
+    "list": "Product Backlog",
+    "title": "As a Restaurant Employee, I want to switch between Cashier, Cook, Inventory Manager, and Admin profiles, So that the interface automatically adjusts to my primary role's default workspace.",
+    "labels": [
+      "Realtime-Infra"
+    ],
+    "checklists": [
+      {
+        "title": "Checklist",
+        "items": [
+          {
+            "name": "Create role dropdown in Navbar.tsx",
+            "state": "incomplete"
+          },
+          {
+            "name": "Implement role-to-tab routing handler in page.tsx",
+            "state": "incomplete"
+          },
+          {
+            "name": "Add hydration-safe mount guard in root page",
+            "state": "incomplete"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "idShort": 16,
+    "list": "Product Backlog",
+    "title": "As a General Manager / Store Owner, I want to see daily gross revenue, total tickets, active orders, and average kitchen prep time, So that I have immediate visibility into today's operational health and speed of service.",
+    "labels": [
+      "Analytics-BI"
+    ],
+    "checklists": [
+      {
+        "title": "Checklist",
+        "items": [
+          {
+            "name": "Build 4 metric cards (Gross Sales, Active Orders, Avg Kitchen Time, Low Stock Items)",
+            "state": "incomplete"
+          },
+          {
+            "name": "Implement database aggregation queries in GET /api/analytics",
+            "state": "incomplete"
+          },
+          {
+            "name": "Add 10-second background polling refresh",
+            "state": "incomplete"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "idShort": 17,
+    "list": "Product Backlog",
+    "title": "As a General Manager, I want to view hourly sales revenue and order counts plotted across the day (08:00 to 22:00), So that I can optimize staff scheduling for peak lunch and dinner hours.",
+    "labels": [
+      "Analytics-BI"
+    ],
+    "checklists": [
+      {
+        "title": "Checklist",
+        "items": [
+          {
+            "name": "Aggregate orders by orderDate.getHours() in API route",
+            "state": "incomplete"
+          },
+          {
+            "name": "Build responsive CSS bar chart with dynamic height percentages",
+            "state": "incomplete"
+          },
+          {
+            "name": "Highlight current peak sales window with visual accent",
+            "state": "incomplete"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "idShort": 18,
+    "list": "Product Backlog",
+    "title": "As a General Manager, I want to see the top revenue-generating menu items and compare raw material usage vs. waste, So that I can promote high-margin items and curb kitchen waste/pilferage.",
+    "labels": [
+      "Analytics-BI"
+    ],
+    "checklists": [
+      {
+        "title": "Checklist",
+        "items": [
+          {
+            "name": "Write query grouping OrderItem quantities by menuItemId",
+            "state": "incomplete"
+          },
+          {
+            "name": "Render top-sellers leaderboard with rank badges (1st, 2nd, 3rd)",
+            "state": "incomplete"
+          },
+          {
+            "name": "Aggregate stock audit transactions into usage vs. waste percentage bars",
+            "state": "incomplete"
+          },
+          {
+            "name": "Display waste discrepancy indicator",
+            "state": "incomplete"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "idShort": 1,
+    "list": "Done",
+    "title": "As a Cashier,\nI want to filter menu items by category (Burgers, Sides, Beverages, Combos, Deals) and search by SKU or item name,\nSo that I can rapidly locate customer items during peak rush hours without delay.",
+    "labels": [
+      "POS-Engine"
+    ],
+    "checklists": []
+  },
+  {
+    "idShort": 2,
+    "list": "Done",
+    "title": "As a Cashier, I want to select customized add-ons (extra cheese, bacon, sauces) and specify special customer instructions, So that customer dietary choices and taste preferences are accurately priced and sent to the kitchen.",
+    "labels": [
+      "POS-Engine"
+    ],
+    "checklists": [
+      {
+        "title": "Checklist",
+        "items": [
+          {
+            "name": "Build ModifierModal overlay component with smooth animation",
+            "state": "complete"
+          },
+          {
+            "name": "Fetch dynamic modifiers attached to the selected MenuItem",
+            "state": "complete"
+          },
+          {
+            "name": "Implement multi-select checkbox buttons for add-ons with individual prices",
+            "state": "complete"
+          },
+          {
+            "name": "Add textarea for free-text kitchen instructions",
+            "state": "complete"
+          },
+          {
+            "name": "Update cart state handler to store unique cartItemId, modifier array, and notes",
+            "state": "complete"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "idShort": 5,
+    "list": "Done",
+    "title": "As a Cashier and Customer, I want to preview and print an 80mm standard thermal receipt, So that the customer receives a verified proof of purchase and order ticket number.",
+    "labels": [
+      "POS-Engine"
+    ],
+    "checklists": []
+  },
+  {
+    "idShort": 6,
+    "list": "Done",
+    "title": "As a Head Cook / Kitchen Staff, I want to see incoming orders sorted by waiting time with itemized prep details and notes, So that our kitchen team prepares tickets in First-In-First-Out (FIFO) sequence.",
+    "labels": [
+      "KDS-Display"
+    ],
+    "checklists": [
+      {
+        "title": "Checklist",
+        "items": [
+          {
+            "name": "Create KDS order ticket grid with responsive masonry/grid layout",
+            "state": "complete"
+          },
+          {
+            "name": "Fetch active tickets via GET /api/orders?active=true",
+            "state": "complete"
+          },
+          {
+            "name": "Add status pill tabs (ALL, PENDING, PREPARING, READY)",
+            "state": "complete"
+          },
+          {
+            "name": "Render item quantities in high-contrast badges for rapid legibility",
+            "state": "complete"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "idShort": 7,
+    "list": "Done",
+    "title": "As a Head Cook, I want ticket cards to update their elapsed timer every second and shift border colors based on delay, So that overdue orders are immediately recognizable and prioritized.",
+    "labels": [
+      "KDS-Display"
+    ],
+    "checklists": []
+  },
+  {
+    "idShort": 3,
+    "list": "Done",
+    "title": "As a Cashier, I want to apply promotional coupon codes and view automatic tax and subtotal calculations, So that the total billing amount is transparent, accurate, and compliant with store discounts.",
+    "labels": [
+      "POS-Engine"
+    ],
+    "checklists": []
+  },
+  {
+    "idShort": 4,
+    "list": "Done",
+    "title": "As a Cashier, I want to tender orders using Cash (with quick rupee bills), Card, or QR Mobile Wallet, So that I can settle transactions quickly and calculate exact customer change.",
+    "labels": [
+      "POS-Engine"
+    ],
+    "checklists": []
+  },
+  {
+    "idShort": 8,
+    "list": "Done",
+    "title": "As a Kitchen Cook, I want to advance an order from PENDING to PREPARING, READY, and COMPLETED, So that front-of-house staff know when food is ready for delivery or customer pickup.",
+    "labels": [
+      "KDS-Display"
+    ],
+    "checklists": [
+      {
+        "title": "Checklist",
+        "items": [
+          {
+            "name": "Create updateStatusMutation using PATCH /api/orders/:id",
+            "state": "complete"
+          },
+          {
+            "name": "Record start, ready, and completed timestamps in Prisma database",
+            "state": "complete"
+          },
+          {
+            "name": "Play success chime upon transition",
+            "state": "complete"
+          },
+          {
+            "name": "Invalidate React Query orders and analytics keys",
+            "state": "complete"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "idShort": 9,
+    "list": "Done",
+    "title": "As an Inventory Manager, I want raw ingredient stocks to automatically decrement based on recipe BOM and applied modifiers when cooking starts, So that stock counts reflect exact physical kitchen usage without manual tallying.",
+    "labels": [
+      "Inventory-BOM"
+    ],
+    "checklists": [
+      {
+        "title": "Checklist",
+        "items": [
+          {
+            "name": "Build recipe BOM relational query joining OrderItem -> MenuItem -> RecipeItem",
+            "state": "complete"
+          },
+          {
+            "name": "Aggregate duplicate ingredient deductions into a single Map",
+            "state": "complete"
+          },
+          {
+            "name": "Include modifier-based ingredient consumption",
+            "state": "complete"
+          },
+          {
+            "name": "Run atomic decrement via prisma.$transaction",
+            "state": "complete"
+          },
+          {
+            "name": "Broadcast STOCK_UPDATED event through SSE",
+            "state": "complete"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "idShort": 10,
+    "list": "Done",
+    "title": "As an Inventory Manager, I want to view all ingredients with color-coded stock health badges and inspect which recipes use them, So that I can prevent out-of-stock incidents before rush hours.",
+    "labels": [
+      "Inventory-BOM"
+    ],
+    "checklists": [
+      {
+        "title": "Checklist",
+        "items": [
+          {
+            "name": "Implement inventory table with stock quantity, unit, unit cost, and reorder threshold",
+            "state": "complete"
+          },
+          {
+            "name": "Calculate total inventory valuation (currentStock * costPerUnit)",
+            "state": "complete"
+          },
+          {
+            "name": "Add \"Low Stock Only\" quick-filter switch",
+            "state": "complete"
+          },
+          {
+            "name": "Build modal/popover inspecting menu items linked through RecipeItem",
+            "state": "complete"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "idShort": 11,
+    "list": "Done",
+    "title": "As an Inventory Manager, I want to manually record ingredient waste, cycle counts, or emergency restocks with a mandatory audit reason, So that kitchen shrinkage and dropped items are tracked in the audit trail.",
+    "labels": [
+      "Inventory-BOM"
+    ],
+    "checklists": [
+      {
+        "title": "Checklist",
+        "items": [
+          {
+            "name": "Create AdjustmentModal form with type radio buttons",
+            "state": "complete"
+          },
+          {
+            "name": "Validate reason field is at least 3 characters",
+            "state": "complete"
+          },
+          {
+            "name": "Connect POST /api/inventory endpoint with Zod schema validation",
+            "state": "complete"
+          },
+          {
+            "name": "Display recent 20 audit transactions in the \"Stock Audit Trail\" tab",
+            "state": "complete"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "idShort": 12,
+    "list": "Done",
+    "title": "As an Inventory Manager, I want to create purchase orders for suppliers and mark them as received when delivery arrives, So that incoming deliveries automatically update inventory stock balances.",
+    "labels": [
+      "Inventory-BOM"
+    ],
+    "checklists": [
+      {
+        "title": "Checklist",
+        "items": [
+          {
+            "name": "Build CreatePoModal with dynamic multi-row item inputs",
+            "state": "complete"
+          },
+          {
+            "name": "Implement POST /api/purchase-orders endpoint",
+            "state": "complete"
+          },
+          {
+            "name": "Build Purchase Orders list view with status filters (PENDING, RECEIVED, CANCELLED)",
+            "state": "complete"
+          },
+          {
+            "name": "Implement PATCH /api/purchase-orders/:id transaction to increment stock upon receipt",
+            "state": "complete"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "idShort": 13,
+    "list": "Done",
+    "title": "As a User across any terminal (Cashier, Kitchen, Inventory), I want data updates (new orders, status changes, stock drops) to reflect instantly without refreshing, So that kitchen and front-of-house stay completely synchronized.",
+    "labels": [
+      "Realtime-Infra"
+    ],
+    "checklists": [
+      {
+        "title": "Checklist",
+        "items": [
+          {
+            "name": "Implement ReadableStream route handler in src/app/api/realtime/route.ts",
+            "state": "complete"
+          },
+          {
+            "name": "Hook Node.js EventEmitter singleton in src/lib/events.ts",
+            "state": "complete"
+          },
+          {
+            "name": "Write client hook useRealtimeSync with auto-reconnect",
+            "state": "complete"
+          },
+          {
+            "name": "Connect React Query queryClient.invalidateQueries triggers",
+            "state": "complete"
+          },
+          {
+            "name": "Add pulsing status indicator in Navbar.tsx",
+            "state": "complete"
+          }
+        ]
+      }
+    ]
+  }
+]

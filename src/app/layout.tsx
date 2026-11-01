@@ -3,9 +3,8 @@ import "./globals.css";
 import QueryProvider from "@/components/providers/QueryProvider";
 
 export const metadata: Metadata = {
-  title: "BURGERCRAFT OS | Fast Food POS, KDS & Real-time Inventory",
-  description:
-    "Production-grade Fast Food Restaurant Management, Order Processing, Real-Time Kitchen Display System (KDS), and Recipe BOM Inventory Control.",
+  title: "PIZZA WORLD AND SANAM ICECREAM | POS & Restaurant OS",
+  description: "PIZZA WORLD AND SANAM ICECREAM - Premium Fast Food & Icecream POS System.",
 };
 
 export default function RootLayout({
@@ -14,9 +13,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark h-full antialiased" suppressHydrationWarning>
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <body
-        className="min-h-full flex flex-col bg-[#0b0f19] text-slate-100 selection:bg-orange-500 selection:text-white"
+        className="min-h-full flex flex-col bg-slate-950 text-slate-200 selection:bg-orange-600 selection:text-white"
         suppressHydrationWarning
       >
         <QueryProvider>{children}</QueryProvider>

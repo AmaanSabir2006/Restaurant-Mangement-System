@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { PaymentMethod } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
 import { soundManager } from "@/lib/sound";
+import { useLanguage } from "@/lib/LanguageContext";
 import confetti from "canvas-confetti";
 import {
   X,
@@ -30,6 +31,7 @@ export default function PaymentModal({
   onConfirmPayment,
   isSubmitting,
 }: PaymentModalProps) {
+  const { t, isUrdu } = useLanguage();
   const [method, setMethod] = useState<PaymentMethod>("CASH");
   const [tenderAmountStr, setTenderAmountStr] = useState<string>(totalAmount.toFixed(2));
   const [cardProcessingState, setCardProcessingState] = useState<"idle" | "authorizing" | "approved">("idle");
@@ -91,24 +93,24 @@ export default function PaymentModal({
               <DollarSign className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-white text-base">Tender & Payment</h3>
-              <p className="text-xs text-slate-400">Select payment method & complete sale</p>
+              <h3 className="font-bold text-slate-100 text-base">{t("Tender & Payment")}</h3>
+              <p className="text-xs text-slate-400">{t("Select payment method & complete sale")}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Total Banner */}
-        <div className="p-5 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border-b border-slate-800 text-center">
+        <div className="p-5 bg-slate-900 border-b border-slate-700 text-center">
           <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
-            Total Due
+            {t("Total Due")}
           </span>
-          <div className="text-3xl font-black text-orange-400 tracking-tight mt-1">
+          <div className="text-3xl font-black text-orange-600 dark:text-orange-400 tracking-tight mt-1">
             {formatCurrency(totalAmount)}
           </div>
         </div>
@@ -125,12 +127,12 @@ export default function PaymentModal({
               }}
               className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-bold transition-all ${
                 method === "CASH"
-                  ? "bg-orange-500 text-white border-orange-500 shadow-lg shadow-orange-500/25"
-                  : "bg-slate-800/80 text-slate-300 border-slate-700/80 hover:bg-slate-800"
+                  ? "bg-orange-600 text-white border-orange-600 shadow-sm"
+                  : "bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700/60 hover:text-slate-100"
               }`}
             >
               <Banknote className="w-5 h-5 mb-1.5" />
-              <span>Cash</span>
+              <span>{t("Cash")}</span>
             </button>
 
             <button
@@ -141,12 +143,12 @@ export default function PaymentModal({
               }}
               className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-bold transition-all ${
                 method === "CARD"
-                  ? "bg-orange-500 text-white border-orange-500 shadow-lg shadow-orange-500/25"
-                  : "bg-slate-800/80 text-slate-300 border-slate-700/80 hover:bg-slate-800"
+                  ? "bg-orange-600 text-white border-orange-600 shadow-sm"
+                  : "bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700/60 hover:text-slate-100"
               }`}
             >
               <CreditCard className="w-5 h-5 mb-1.5" />
-              <span>Card / EMV</span>
+              <span>{t("Card / EMV")}</span>
             </button>
 
             <button
@@ -157,12 +159,12 @@ export default function PaymentModal({
               }}
               className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-bold transition-all ${
                 method === "QR_MOBILE"
-                  ? "bg-orange-500 text-white border-orange-500 shadow-lg shadow-orange-500/25"
-                  : "bg-slate-800/80 text-slate-300 border-slate-700/80 hover:bg-slate-800"
+                  ? "bg-orange-600 text-white border-orange-600 shadow-sm"
+                  : "bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700/60 hover:text-slate-100"
               }`}
             >
               <QrCode className="w-5 h-5 mb-1.5" />
-              <span>Mobile / QR</span>
+              <span>{t("Mobile / QR")}</span>
             </button>
           </div>
 
@@ -171,7 +173,7 @@ export default function PaymentModal({
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
-                  Amount Tendered (PKR)
+                  {t("Amount Tendered (PKR)")}
                 </label>
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">
@@ -182,7 +184,7 @@ export default function PaymentModal({
                     step="1"
                     value={tenderAmountStr}
                     onChange={(e) => setTenderAmountStr(e.target.value)}
-                    className="w-full bg-slate-800/90 border border-slate-700 rounded-xl pl-12 pr-4 py-2.5 text-lg font-black text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-12 pr-4 py-2.5 text-lg font-black text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
                     placeholder="0"
                     autoFocus
                   />
@@ -192,7 +194,7 @@ export default function PaymentModal({
               {/* Quick tender buttons */}
               <div>
                 <span className="text-[11px] font-semibold text-slate-400 block mb-1.5">
-                  Quick Tender Presets
+                  {t("Quick Tender Presets")}
                 </span>
                 <div className="flex flex-wrap gap-2">
                   {quickBills.map((bill) => (
@@ -200,9 +202,9 @@ export default function PaymentModal({
                       key={bill.label}
                       type="button"
                       onClick={() => setTenderAmountStr(bill.value.toFixed(2))}
-                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition-colors"
+                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition-colors cursor-pointer"
                     >
-                      {bill.label === "Exact" ? `Exact (${formatCurrency(bill.value)})` : bill.label}
+                      {bill.label === "Exact" ? `${t("Exact")} (${formatCurrency(bill.value)})` : bill.label}
                     </button>
                   ))}
                 </div>
@@ -212,16 +214,16 @@ export default function PaymentModal({
               <div
                 className={`p-3.5 rounded-xl border transition-all ${
                   change > 0
-                    ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300"
+                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-bold"
                     : tenderAmount < totalAmount
-                    ? "bg-red-950/30 border-red-500/30 text-red-300"
-                    : "bg-slate-800/60 border-slate-700/60 text-slate-300"
+                    ? "bg-red-500/10 border-red-500/30 text-red-500 font-bold"
+                    : "bg-slate-800 border border-slate-700 text-slate-300 font-medium"
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold">Change to Return:</span>
+                  <span className="text-xs font-semibold">{t("Change to Return:")}</span>
                   <span className="text-xl font-black">
-                    {tenderAmount >= totalAmount ? formatCurrency(change) : "Insufficient Cash"}
+                    {tenderAmount >= totalAmount ? formatCurrency(change) : t("Insufficient Cash")}
                   </span>
                 </div>
               </div>
@@ -230,12 +232,12 @@ export default function PaymentModal({
 
           {/* CARD Panel */}
           {method === "CARD" && (
-            <div className="p-6 rounded-xl bg-slate-800/50 border border-slate-700/70 text-center space-y-3">
-              <div className="w-12 h-12 mx-auto rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center border border-blue-500/30">
+            <div className="p-6 rounded-xl bg-slate-800 border border-slate-700 text-center space-y-3">
+              <div className="w-12 h-12 mx-auto rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center border border-blue-500/30">
                 <CreditCard className="w-6 h-6 animate-pulse" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-white">
+                <h4 className="text-sm font-bold text-slate-100">
                   {cardProcessingState === "authorizing"
                     ? "Contacting Bank Gateway..."
                     : cardProcessingState === "approved"
@@ -246,8 +248,8 @@ export default function PaymentModal({
                   Insert chip, tap NFC contactless card, or swipe to pay {formatCurrency(totalAmount)}
                 </p>
               </div>
-              <div className="flex items-center justify-center gap-2 text-[11px] text-slate-400 pt-2 border-t border-slate-700/50">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <div className="flex items-center justify-center gap-2 text-[11px] text-slate-400 pt-2 border-t border-slate-700">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
                 <span>PCI-DSS Compliant End-to-End Encryption</span>
               </div>
             </div>
@@ -255,8 +257,8 @@ export default function PaymentModal({
 
           {/* QR / MOBILE Panel */}
           {method === "QR_MOBILE" && (
-            <div className="p-5 rounded-xl bg-slate-800/50 border border-slate-700/70 text-center space-y-3">
-              <div className="w-32 h-32 mx-auto p-2 bg-white rounded-xl shadow-lg flex items-center justify-center">
+            <div className="p-5 rounded-xl bg-slate-800 border border-slate-700 text-center space-y-3">
+              <div className="w-32 h-32 mx-auto p-2 bg-white rounded-xl shadow-md flex items-center justify-center">
                 {/* Simulated high-contrast QR matrix pattern */}
                 <div className="w-full h-full border-4 border-slate-900 rounded-lg p-1.5 flex flex-col justify-between">
                   <div className="flex justify-between">
@@ -273,9 +275,9 @@ export default function PaymentModal({
                 </div>
               </div>
               <div>
-                <h4 className="text-sm font-bold text-white">Scan to Pay</h4>
+                <h4 className="text-sm font-bold text-slate-100">Scan to Pay</h4>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Apple Pay, Google Wallet, Venmo, or Cash App
+                  EasyPaisa, JazzCash, Nayapay, or SadaPay
                 </p>
               </div>
             </div>
@@ -283,26 +285,26 @@ export default function PaymentModal({
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-slate-950/80 border-t border-slate-800 flex items-center justify-between">
+        <div className="p-4 bg-slate-900 border-t border-slate-700 flex items-center justify-between">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 transition-colors"
+            className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors cursor-pointer"
           >
-            Cancel (Esc)
+            {t("Cancel")}
           </button>
           <button
             type="button"
             onClick={handlePay}
             disabled={!isSufficient || isSubmitting || cardProcessingState === "authorizing"}
-            className="px-6 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:pointer-events-none active:scale-95 text-white text-xs font-bold shadow-lg shadow-orange-500/20 flex items-center gap-2 transition-all"
+            className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:pointer-events-none active:scale-95 text-white text-xs font-bold shadow-sm flex items-center gap-2 transition-all cursor-pointer"
           >
             {isSubmitting || cardProcessingState === "authorizing" ? (
-              <span>Authorizing...</span>
+              <span>{t("Authorizing...")}</span>
             ) : (
               <>
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Complete Sale (Enter)</span>
+                <span>{t("Complete Sale")}</span>
               </>
             )}
           </button>
