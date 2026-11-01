@@ -222,6 +222,15 @@ export interface AnalyticsSummaryDto {
   monthSuppliesPending?: number;
   netMonthlyProfit?: number;
   isMonthReset?: boolean;
+  archivedSnapshot?: {
+    monthKey?: string;
+    closedAt?: string;
+    totalSales?: number;
+    totalOrders?: number;
+    totalSupplies?: number;
+    notes?: string;
+    isReset?: boolean;
+  } | null;
   availableMonths?: {
     key: string;
     label: string;

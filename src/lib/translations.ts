@@ -94,7 +94,6 @@ export const URDU_TRANSLATIONS: Record<string, string> = {
   "Order #": "آرڈر نمبر",
   "Order Type:": "آرڈر کی قسم:",
   "Payment Method:": "ادائیگی کا طریقہ:",
-  "Cashier:": "کیشیئر:",
   "TOTAL:": "کل ٹوٹل:",
 
   // Sales & Reports
